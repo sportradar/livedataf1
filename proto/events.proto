@@ -1,0 +1,420 @@
+syntax = "proto3";
+
+package sportradar.ldi.f1.events.v1;
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.sportradar.livedata.integration.f1.events.v1";
+option java_outer_classname = "EventProtos";
+
+//DriverData contains values that can be associated with the driver.
+message DriverData {
+  //The SportRadar id for the driver
+  string driverId = 1;
+  //The drivers racing number
+  int32 racingNumber = 2;
+  //The amount of tire changes the driver has had in this stage
+  int32 numberOfTyres = 3;
+  //Position of the driver in the current classification
+  int32 position = 4;
+  //The drivers last lap time in this stage (empty string if missing)
+  string lastLapTime = 5;
+  //The drivers personal best lap time in this stage (empty string if missing)
+  string personalBestLapTime = 6;
+  //The drivers personal best (fastest) lap number in this stage (empty string if missing)
+  string personalBestLapNumber = 7;
+  //The number of pit stops for the driver in this stage
+  int32 pitStops = 8;
+  //The number of laps the driver has completed in this stage
+  int32 lapsCompleted = 9;
+  //The drivers current tyre compound (empty string if missing)
+  string tyre = 10;
+  //True if the driver is active in the stage; not stopped, on track, not in the pit lane.
+  bool isActive = 11;
+}
+
+//The LeaderboardItem is used as a data type in the 3 different types of leaderboard events
+//you can receive (Practice, Qualifying and Race).
+message LeaderboardItem {
+  //Position of the driver in the current classification
+  int32 position = 1;
+  //The driver data that describes a drivers position on the leader board
+  DriverData driverData = 2;
+}
+
+//StartingPositionEvent contains the lineup for the stage. This is the order the drivers start in.
+//This is sent once, right after StartOfStageEvent is sent. This data is also accessible in the stage snapshot.
+//The events contains a list of leader board items. See the description for LeaderboardItem.
+message StartingPositionEvent {
+  //A list of leaderboard items containing the lineup for the stage. This list contains driver ids and
+  //their position. For a race type stage this will normally contain 20 drivers.
+  repeated LeaderboardItem items = 1;
+}
+
+//The RaceLeaderboardEvent is sent during race stages. Full updates for RaceLeaderboardEvent
+// is sent approximately every 20 seconds. Partial updates is sent every time a driver completes a sector.
+message RaceLeaderboardEvent {
+  //The id of the stage
+  string stageId = 1;
+  //False if it contains all drivers and True if it contains fewer than all drivers
+  bool isPartialUpdate = 2;
+  //The ideal lap time for the current session. The ideal lap time is the sum of the
+  //best sector times for the current session.
+  string idealLapTime = 3;
+  //A list of leaderboard items
+  repeated LeaderboardItem items = 4;
+}
+
+//The PracticeLeaderboardEvent is sent during practice stages (Practice 1, Practice 2 and Practice 3).
+//Be aware that practice sessions are chaotic in nature and that it's normal with many pit stops and that few or
+// no drivers might be active in the stage. In practice sessions the leaderboard is normally updated just once per lap.
+//In practice sessions drivers are not competing for first place. They are practicing. For that reason it's
+// unpredictable and we do not recommend using the practice leader board for any markets.
+message PracticeLeaderboardEvent {
+  //The id of the stage
+  string stageId = 1;
+  //False if it contains all drivers and True if it contains fewer than all drivers
+  bool isPartialUpdate = 2;
+  //The ideal lap time for the current session. The ideal lap time is the sum of the
+  //best sector times for the current session.
+  string idealLapTime = 3;
+  //A list of leaderboard items
+  repeated LeaderboardItem items = 4;
+}
+
+//F1 Qualifying is the part done before a race, to determine the starting positions of the cars in the race.
+//Qualifying is done in three sessions, where the first session is used to single out the 5 slowest cars, which in
+// turn gets starting position 20 - 16 in the main event. These cars can not participate in session 2 and 3.
+//The second session is once again used to single out the 5 slowest cars of the remaining cars. These cars gets
+// starting position 15 - 11 in the race, and can not participate in session 3. For the third session of qualifying
+// only the remaining 10 cars can participate. The driver with the fastest lap time gets starting position 1.
+//The second fastest gets starting position 2 and so on.
+message QualifyingLeaderboardEvent {
+  //The id of the stage
+  string stageId = 1;
+  // If false a full leaderboard will be sent, if true updates for one or more drivers are sent
+  bool isPartialUpdate = 2;
+  // The ideal lap time for the current session. The ideal lap time is the sum of the best sector times for the current session.
+  string idealLapTime = 3;
+  // The value of the cut off time for the current qualifying session
+  string cutOffTime = 4;
+  // Percentage of the fastest lap time set in qualifying (part 1), used to calculate the cut off time
+  int32 cutOffPercentage = 5;
+  // The number of entries in qualifying part 1
+  int32 numEntriesQ1 = 6;
+  // The number of entries in qualifying part 2
+  int32 numEntriesQ2 = 7;
+  // The number of entries in qualifying part 3
+  int32 numEntriesQ3 = 8;
+  // The current qualifying session part
+  int32 sessionPart = 9;
+  //A list of leaderboard items
+  repeated LeaderboardItem items = 10;
+}
+
+//A sector in a F1 race is a section of the course roughly one third the length of the course.
+//For every sector each car reports how long it took to complete the sector
+message Sector {
+  //The sector id, numeric value from 1 to 3
+  int32 id = 1;
+  //True if the time for this sector is the overall fastest for all entries
+  bool overallFastest = 2;
+  //Current time for this sector. Time format DURATION. Empty if the sector has not been completed for the current lap.
+  string value = 3;
+  //True if the time for this sector is the personal fastest for this entry
+  bool personalFastest = 4;
+  //True if this entry has stopped in this sector
+  bool stopped = 5;
+  //Difference between the sector time for this lap and the previous lap
+  string difference = 6;
+}
+
+//Every formula 1 Grand Prix has 3 speed traps placed around the track. These are used to measure the speed of every
+// car as it passes through. As a result one can see who has the highest speed at that exact part of the lap.
+message Speed {
+  //The speed trap id, alphanumeric
+  //
+  //I1 - Intermediate 1
+  //I2 - Intermediate 2
+  //FL - Finish line
+  //ST - Speed trap (standalone)
+  string id = 1;
+  //Speed in km/h for this sector
+  string value = 2;
+  //True if this is the fastest speed for this entry in this sector during this stage.
+  //Empty if the sector has not been completed for the current lap.
+  bool personalFastest = 3;
+  //True if this is the fastest speed for any entry in this sector during this stage
+  bool overallFastest = 4;
+  //The difference between the sector speed for this lap and the previous lap
+  string difference = 5;
+}
+
+//SectorEvent is sent every time a driver completes a sector.
+message SectorEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //The data for the last completed sector
+  Sector sector = 2;
+}
+
+//The SpeedTrapEvent is sent every time a driver passes through a speed trap.
+message SpeedTrapEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //The data for the last completed speed trap.
+  Speed speed = 2;
+}
+
+message DriverStatus {
+  //Set to true if the driver is retired
+  bool retired = 1;
+  //Set to true when the driver enter the pit lane and to false when the driver exits the pit
+  bool inPit = 2;
+  //Set to true when the driver exits the pit lane and to false once the driver completes the first sector
+  bool pitOut = 3;
+  //Set to true if the driver stops on track
+  bool stopped = 4;
+}
+
+//DriverStatusChangedEvent is sent every time a drivers status changes. This happens when a driver is in the pit,
+// on it's way out of the pit or if the driver has stopped or retired. 
+message DriverStatusChangedEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //Status data
+  DriverStatus driverStatus = 2;
+}
+
+//A stint is the period between two pitstops. The first stint is the period between the start of the stage and the
+// first pitstop. Tires are not always changed, so check that tires are changed in the stint if that is what you
+// are looking for.
+message Stint {
+  //The amount of laps this tire has been used before it was placed on the car this stint
+  int32 startLaps = 1;
+  //The total amount of laps on this tire.
+  int32 totalLaps = 2;
+  //True if this is a new tire, false if it has been used before
+  bool new = 3;
+  //True if tires where changed in this stint, false if they where not changed
+  // (e.g. if the driver has a pit stop to replace a broken nose-cone)
+  bool tyresChanged = 4;
+  //The tyres compound. E.g. HARD, SOFT, WET
+  string compound = 5;
+}
+
+//We send NewTiresEvent after every time a driver has had a pit stop. After driver status changes to pitOut=true,
+// this event follows. It describes what happened in the previous stint. If you want to know the current tire compound
+// for a live stage you can check the tyre property on the DriverData message (sent in leader board updates).
+//That contains the current tire compound. Full information about a tire is not available until after the driver
+// has a new pit stop.
+message NewTiresEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //A list of the drivers stints in this stage.
+  repeated Stint stints = 2;
+}
+
+//The PitLaneTimeEvent is sent after the driver exits the pit lane. This time is the difference from the driver enters
+// the pit lane until the drivers exits the pit lane.
+message PitLaneTimeEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //The number of laps completed by the driver.
+  int32 lapNumber = 2;
+  //The calculated delta from crossing the pit entry to crossing the pit exit. Duration in seconds, e.g. 21.8
+  double duration = 3;
+}
+
+//The LapCountEvent contains information about the expected number of laps, the current lap and the laps remaining.
+//It is sent every time one of these values changes; Minimum every new lap. Not sent in Qualifying or Practice sessions.
+message LapCountEvent {
+  //The currently expected number of race laps after which the race will be completed should this number of
+  // laps be completed within the prescribed time limit.
+  int32 totalRaceLaps = 1;
+  //The lap number the leader of the race is currently on
+  int32 currentRaceLap = 2;
+  //The number of laps remaining in the race at the last time the race leader crossed the finish line.
+  int32 raceLapsRemaining = 3;
+}
+
+//Lap event is sent every time a driver completes a lap. It contains the updated driver data, including position.
+message LapEvent {
+  //A DriverData message that describes the drivers standing in the stage
+  DriverData driverInfo = 1;
+}
+
+//Overtaking event is sent every time there is a change in drivers position detected after a driver crosses a timing
+// loop. Right after an overtake event is sent with overtakeState OVERTAKEN or OVERTOOK we send an OvertakingEvent
+// with overtakeState MAINTAINED to indicate that the driver is currently maintaining the new position.
+//Be aware that the official position in the race is updated every time a driver completes a sector.
+//This position is delivered in the leaderboard event.
+message OvertakingEvent {
+  enum OvertakeState {
+    UNKNOWN = 0; //The overtake state is unknown
+    OVERTAKEN = 1; //The driver has been overtaken by the driver behind.
+    MAINTAINED = 2; //The driver has maintained it's position. Sent to clear state right after OVERTAKEN or OVERTOOK
+    OVERTOOK = 3; //The driver overtook the driver in front.
+  }
+  //The drivers SportRadar id
+  string driverId = 1;
+  //The drivers overtakeState
+  OvertakeState overtakeState = 2;
+  //The drivers new unofficial position. NOTE: this position is not confirmed by timing officials until the driver
+  // completes a sector and a new leader board event is sent.
+  int32 newUnofficialPosition = 3;
+}
+
+//The CatchingEvent is sent if the gap between a driver and the driver in front is less than one second and the gap is decreasing or increasing rapidly.
+message CatchingEvent {
+  enum CatchingState {
+    UNKNOWN = 0; //The overtake state is unknown
+    FALLING_BACK = 1; //The gap between the driver and the driver in front is increasing
+    MAINTAINING = 2; //The gap between the driver and the driver in front is steady
+    CATCHING = 3; //The gap between the driver and the driver in front is decreasing
+  }
+  //The drivers SportRadar id
+  string driverId = 1;
+  //The drivers catching state
+  CatchingState catchingState = 2;
+}
+
+//The RaceDriverTimingEvent is sent during race stages. This event is sent every time a driver passes a new timing loop.
+message RaceDriverTimingEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  string intervalToPositionAhead = 2;
+  //A duration to the leader. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  string gapToLeader = 3;
+  //The duration of time between the race start time, and the last passing of the control line for this entry.
+  // H:MM:SS:THT (e.g. "1:02:03:045"), no 0 in the left are displayed.
+  string raceTime = 4;
+  //The new UNOFFICIAL position for the driver. This position is not verified and should only be used as a guideline.
+  int32 newUnofficialPosition = 5;
+}
+
+//The QualifyingDriverTimingEvent is sent during qualifying stages. It contains timing data from qualifying sessions
+// and is updated every time a driver passes a timing loop.
+message QualifyingDriverTimingEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  string intervalToPositionAhead = 2;
+  //A duration to the leader. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  string gapToLeader = 3;
+  //The duration of time between the race start time, and the last passing of the control line for this entry.
+  // H:MM:SS:THT (e.g. "1:02:03:045"), no 0 in the left are displayed.
+  string raceTime = 4;
+  //The time difference between this entry and the entry in position 1
+  // (the quickest driver in the Q1 part of qualifying). Time format DURATION
+  string timeDiffToFastestQ1 = 5;
+  //The time difference between this entry and the entry in the position ahead during Q1 part of qualifying.
+  //Time format DURATION
+  string timeDiffToPositionAheadQ1 = 6;
+  //The time difference between this entry and the entry in position 1
+  // (the quickest driver in the Q2 part of qualifying). Time format DURATION
+  string timeDiffToFastestQ2 = 7;
+  //The time difference between this entry and the entry in the position ahead during Q2 part of qualifying.
+  //Time format DURATION
+  string timeDiffToPositionAheadQ2 = 8;
+  //The time difference between this entry and the entry in position 1
+  // (the quickest driver in the Q3 part of qualifying). Time format DURATION
+  string timeDiffToFastestQ3 = 9;
+  //The time difference between this entry and the entry in the position ahead during Q3 part of qualifying.
+  //Time format DURATION
+  string timeDiffToPositionAheadQ3 = 10;
+}
+
+//The PracticeDriverTimingEvent is sent during practice stages. The event is sent when the driver passes a timing loop.
+//`These timing loops are normally not activated during practice sessions.
+message PracticeDriverTimingEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  string intervalToPositionAhead = 2;
+  //A duration to the leader. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  string gapToLeader = 3;
+  //The duration of time between the race start time, and the last passing of the control line for this entry.
+  // H:MM:SS:THT (e.g. "1:02:03:045"), no 0 in the left are displayed.
+  string raceTime = 4;
+}
+
+//The StageStatusEvent is sent every time the stage status changes. Before the stage starts the status will be
+// INACTIVE and when it starts it will be STARTED. Normally the stage status does not change while a race is ongoing,
+// so you'll receive one StageStatusEvent when the race starts and one 2 hours later when the stage is FINISHED.
+message StageStatusEvent {
+  enum SessionState {
+    UNKNOWN = 0; //The stage state is unknown
+    INACTIVE = 1; //The stage status is inactive. This is the normal state before the stage starts
+    STARTED = 2; //The stage has started. This is the normal state during a race, practice or qualifying session.
+    //This is the state that will be shown when the first driver has completed the race.
+    //There will still be cars on the track competing for a position.
+    FINISHED = 3;
+    ABORTED = 4; //If the stage is aborted for some reason this state will be shown.
+    //Approx 15-20 minutes after the stage is FINISHED F1 changes the state to FINALISED.
+    //This means that there will be no more events. After this is sent we will send the EndOfStageEvent and
+    // you should disconnect from the stream.
+    FINALISED = 5;
+  }
+  //The current session state
+  SessionState state = 1;
+}
+
+//The TrackStatusEvent is sent every time an incident occur that leads to a change in the status of the track. 
+message TrackStatusEvent {
+  enum TrackStatus {
+    UNKNOWN = 0; //The track status is unknown
+    TRACK_CLEAR = 1; //Track is clear
+    YELLOW_FLAGS = 2; //Yellow flags are being shown at one or more locations on track
+    NO_USED_NO_MEANING = 3; //No longer used, no relevant meaning.
+    SAFETY_CAR = 4; //Safety car has been and still is deployed
+    RED_FLAG = 5; //A Red Flag has been shown, and the session has been aborted or suspended
+    VIRTUAL_SAFETY_CAR = 6; //Virtual safety car has been deployed
+    VIRTUAL_SAFETY_CAR_END = 7; //Virtual safety car ending notification
+  }
+  //The current track status
+  TrackStatus trackStatus = 1;
+  //String representation of the track status. E.g. "Yellow"
+  string message = 2;
+}
+
+//RaceControlEvents are transmitted live at various times throughout the stage. It contains a description of relevant
+// events in the race such as information about incidents.
+message RaceControlEvent {
+  //The message that occurred
+  string value = 1;
+  //The message enriched with a drivers TLA if a driver is mentioned in the message
+  string tlaEnrichedValue = 2;
+  //The message enriched with a drivers Name if a driver is mentioned in the message
+  string nameEnrichedValue = 3;
+}
+
+//WeatherUpdateEvent describes the weather conditions at the track.
+message WeatherUpdateEvent {
+  //The current relative humidity, expressed as percentage
+  double humidity = 1;
+  //Rainfall indicator. True if it's raining.
+  bool rainfall = 2;
+  //Current air temperature measured in degrees Celsius
+  double airTemp = 3;
+  //The current atmospheric pressure measured in mBars
+  double pressure = 4;
+  //Current track temperature measured in degrees Celsius
+  double trackTemp = 5;
+  //The current wind course, in degrees, measured in a clockwise direction with 0 representing north.
+  //Wind course indicates where the wind is blowing to.
+  int32 windDirection = 6;
+  //The current wind speed, measured in meters per second.
+  double windSpeed = 7;
+}
+
+//SessionTimeEvent is sent every second and gives you the local time from where the race is in addition to remaining
+// time for the stage. Note that the remaining time is the target time for the race. The race might be completed with
+// time remaining if the target amount of laps is reached before.
+message SessionTimeEvent {
+  //Remaining time of the session in seconds and nanos
+  google.protobuf.Duration timeRemaining = 1;
+  //The local time of the day. Seconds and nanos since unix epoch UTC.
+  google.protobuf.Timestamp localTimeOfDay = 2;
+}

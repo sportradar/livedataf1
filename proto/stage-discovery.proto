@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package sportradar.ldi.stage_discovery.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.sportradar.livedata.integration.stagediscovery.v1";
+option java_outer_classname = "StageDiscoveryProtos";
+
+message StageTimetableRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+  string sportId = 3;
+}
+
+message StageDetailsRequest {
+  string stageId = 1;
+}
+
+message StageDetailsResponse {
+  Stage stage = 1;
+}
+
+message StageInfoType {
+  string infoId = 1;
+  string name = 2;
+  string value = 3;
+  string determinate = 4;
+}
+
+//A stage is the same as a sporting event. For Formula 1 this is a part of a Grand Prix. Each Grand Prix consists
+// of 5 stages; Practice 1, Practice 2, Practice 3, Qualifying and Race.
+message Stage {
+  //The id of the stage. This is used when you want to stream events from a specific stage.
+  string stageId = 1;
+  //The estimated time when we start streaming live data from this stage. This is the time when you should connect.
+  //Seconds and nanos since Unix epoch.
+  google.protobuf.Timestamp startEvents = 2;
+  //The official start time of the stage.
+  //Note: F1 might start the stage slightly before or after this time, so be sure to connect at the time
+  // indicated in startEvents property.
+  //Seconds and nanos since Unix epoch, that is the time 00:00:00 UTC on 1 January 1970, minus leap seconds
+  google.protobuf.Timestamp stageStart = 3;
+  //The official end time of the stage.
+  //Duration for F1 Race stages are normally around 2 hours. The data-stream lasts a bit longer than this, but
+  // normally not much. We will send an EndOfStageEvent to let you know when the stage is done. At that time you
+  // should disconnect from the stream.
+  //Seconds and nanos since Unix epoch.
+  google.protobuf.Timestamp stageEnd = 4;
+  //Name of the stage
+  string name = 5;
+  //Short description of the stage
+  string description = 6;
+  //The Sportradar sport ID
+  string sportId = 7;
+  //The Sportradar category ID
+  string categoryId = 8;
+  //The Sportradar category name
+  string categoryName = 9;
+  //The parent stage name. This will be the name of the Grand Prix.
+  string parentStageName = 10;
+  //The type of the stage. STAGE_TYPE_RACE, STAGE_TYPE_PRACTICE or STAGE_TYPE_QUALIFYING
+  string stageType = 11;
+  repeated StageInfoType infoTypes = 12;
+  //Indicates if the stage is in progress and are producing live data. This will be set to true when we process
+  // the first event from the stage and set to false after we have processed the last event.
+  bool isInProgress = 13;
+}
+
+message StageTimetableResponse {
+  repeated Stage stages = 1;
+}
+
+service StageDiscovery {
+  //GetStageDetails should be used when you know the stageId, but you want to know the start time for the stage and the
+  // suggested connect time. As a response you will get one Stage message. It will only return a Stage message in
+  // response if you have booked the stage.
+  rpc GetStageDetails (StageDetailsRequest) returns (StageDetailsResponse);
+  //GetStageTimetable returns a list of stages in the given time frame that you have booked.
+  //You can fetch data from previous stages or follow a live stage.
+  //We recommend that you call GetStageTimetable at least once every day, but no more than once every 5 minutes,
+  // with a time range of 24 hours. As a response you will get a list of stages you have booked. Each stage will have a
+  // "startEvents" property of type google.protobuf.Timestamp. This indicates the suggested connection time for this
+  // stage. At that time we will start sending live data for that stage. If you try to connect with StreamEvents RPC
+  // before this time you will get an error. If you do; implement a 5-10 second back-off and reconnect.
+  rpc GetStageTimetable (StageTimetableRequest) returns (StageTimetableResponse);
+}

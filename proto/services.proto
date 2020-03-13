@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package sportradar.ldi.f1.services.v1;
+
+import "events.proto";
+import "google/protobuf/duration.proto";
+import "event-wrapper.proto";
+
+option java_package = "com.sportradar.livedata.integration.f1.services.v1";
+option java_outer_classname = "ServiceProtos";
+
+message EventResponse {
+  sportradar.ldi.eventwrapper.v1.EventWrapper eventWrapper = 1;
+}
+
+//EndOfStageEvent is the very last event that is sent in the data-stream for a stage. This indicates that there will
+// be no more events for this stage. After a given duration (normally 5 minutes) after you receive this event the
+// stream will be closed on server side. We strongly recommend that you close the stream from client side when
+// this event is received. When the server closes the stream it will return an ABORTED error.
+message EndOfStageEvent {
+  //A duration that indicates when this stream will be closed. Normally 300 seconds.
+  google.protobuf.Duration streamClosesIn = 1;
+}
+
+//StartOfStageEvent is the very first event that is sent when the data-stream from a live stage starts.
+//This indicates that the stage is ready and that you should expect events for this stage.
+//You will normally receive this event 10-15minutes before the start time of a stage.
+message StartOfStageEvent {
+  //The id of the stage. This will be the same stageId as you sent when you started the stream for this stage
+  string stageId = 1;
+}
+
+//BetStartEvent is sent when we recommend that you should open for live bets. In this bet state the stage is in a
+// fairly predictable state.
+message BetStartEvent {
+  //An optional text field to explain the reason for this bet status
+  string reason = 1;
+}
+
+//EarlyBetStartEvent is sent when we recommend that you should be cautious about opening for live bets.
+//The reason for this is that during this bet state there is a high chance for incidents and bet stops.
+message EarlyBetStartEvent {
+  //An optional text field to explain the reason for this bet status
+  string reason = 1;
+}
+
+//BetStopEvent is sent when we recommend that you should close live bets. This bet status is triggered by incidents
+// that make it difficult to predict the outcome. This can be a crash, sensor malfunction, issues with the data-stream
+// and similar. It is also sent when the bet state switches between EarlyBetStartEvent and BetStartEvent.
+message BetStopEvent {
+  //An optional text field to explain the reason for this bet status
+  string reason = 1;
+}
+
+message StageSnapshotRequest {
+  //The stageId for the stage you want to stream events from
+  string stageId = 1;
+}
+
+//The snapshot is a selection of the most recent events of each type included in the snapshot. The id of the most
+// recent event used to build the snapshot will be included in the response. Use this sequenceId to start streaming
+// events to continue streaming from the state the stage was in when this snapshot was created.
+message StageSnapshotResponse {
+  //The current leaderboard for the stage.
+  //Leaderboards differ slightly for different stage types. The correct leaderboard for the requested stage is sent.
+  oneof leaderboard {
+    sportradar.ldi.f1.events.v1.RaceLeaderboardEvent raceLeaderboardEvent = 1;
+    sportradar.ldi.f1.events.v1.QualifyingLeaderboardEvent qualifyingLeaderboardEvent = 2;
+    sportradar.ldi.f1.events.v1.PracticeLeaderboardEvent practiceLeaderboardEvent = 3;
+  }
+  //The most recent status of the stage.
+  sportradar.ldi.f1.events.v1.StageStatusEvent stageStatusEvent = 4;
+  //The most recent track status.
+  sportradar.ldi.f1.events.v1.TrackStatusEvent trackStatusEvent = 5;
+  //The most recent lap count.
+  sportradar.ldi.f1.events.v1.LapCountEvent lapCountEvent = 6;
+  //The most recent weather status
+  sportradar.ldi.f1.events.v1.WeatherUpdateEvent weatherUpdateEvent = 7;
+  //The sequenceId of the last event used to generate this snapshot
+  int64 sequenceId = 8;
+  //The drivers starting position in this stage.
+  sportradar.ldi.f1.events.v1.StartingPositionEvent startingPositionEvent = 9;
+  //Current bet status
+  oneof betStatus {
+    sportradar.ldi.f1.services.v1.EarlyBetStartEvent earlyBetStartEvent = 10;
+    sportradar.ldi.f1.services.v1.BetStartEvent betStartEvent = 11;
+    sportradar.ldi.f1.services.v1.BetStopEvent betStopEvent = 12;
+  }
+}
+
+// Requests events newer than the given afterSequenceId (e.g. not inclusive).
+// Pass afterSequenceId 0 (default) to get all. -1 to only get new
+// When no more events will be sent, eg. stage is done, send EndOfStageEvent and terminate stream
+// events for a stage
+// These events are mandatory and they will always stream regardless of the event types filter:
+// BetStartEvent, BetStopEvent, EarlyBetStartEvent, EndOfStageEvent, StartOfStageEvent
+message EventsRequest {
+  string stageId = 1;
+  // The names of the events to include in response, e.g. "SectorEvent", "SpeedTrapEvent", ...
+  repeated string eventTypes = 2;
+  int64 afterSequenceId = 3;
+}
+
+// These events are mandatory and they will always stream regardless of the event types filter:
+// BetStartEvent, BetStopEvent, EarlyBetStartEvent, EndOfStageEvent, StartOfStageEvent
+message ReplayEventsRequest {
+  string stageId = 1;
+  // The names of the events to include in response, e.g. "SectorEvent", "SpeedTrapEvent", ...
+  repeated string eventTypes = 2;
+  int64 afterSequenceId = 3;
+  int32 speedFactor = 4; // Allowed values are 1-10. Unset, a default value of 0 will be interpreted as 1 -> play back at normal speed
+}
+
+service EventStream {
+  rpc StreamEvents (EventsRequest) returns (stream EventResponse);
+  // Replays old events in the timing they where created - used for testing purposes only
+  rpc ReplayStreamEvents (ReplayEventsRequest) returns (stream EventResponse);
+}
+
+service StageInfo {
+  // The current state of the race. Leaderboard, track state, weather etc. Things that are built from a series of events.
+  // If you reconnect during the race call this first to get current state, then update with stream events
+  rpc GetStageSnapshot (StageSnapshotRequest) returns (StageSnapshotResponse);
+}
