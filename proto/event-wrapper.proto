@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package sportradar.ldi.eventwrapper.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.sportradar.livedata.integration.eventwrapper.v1";
+option java_outer_classname = "EventWrapperProtos";
+
+// The purpose of the wrapper is to expose event meta data for database queries and insertion, Kafka transport etc.
+// without having to unpack the wrapped event.
+message EventWrapper {
+  // Unique Id
+  int64 id = 1;
+  // rawEventUuid, not used
+  string rawEventUuid = 2;
+  // Stage from which the event is produced
+  string stageId = 3;
+  // Timestamp F1 sent message
+  google.protobuf.Timestamp loggedAt = 4;
+  // Typically the name of the event message, for display purposes etc.
+  string eventType = 5;
+  // Event
+  google.protobuf.Any event = 6;
+}
