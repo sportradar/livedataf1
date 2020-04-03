@@ -299,31 +299,31 @@ message RaceDriverTimingEvent {
 message QualifyingDriverTimingEvent {
   //The drivers SportRadar id
   string driverId = 1;
-  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
-  string intervalToPositionAhead = 2;
-  //A duration to the leader. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
-  string gapToLeader = 3;
   //The duration of time between the race start time, and the last passing of the control line for this entry.
   // H:MM:SS:THT (e.g. "1:02:03:045"), no 0 in the left are displayed.
-  string raceTime = 4;
+  string raceTime = 2;
   //The time difference between this entry and the entry in position 1
   // (the quickest driver in the Q1 part of qualifying). Time format DURATION
-  string timeDiffToFastestQ1 = 5;
+  string timeDiffToFastestQ1 = 3;
   //The time difference between this entry and the entry in the position ahead during Q1 part of qualifying.
   //Time format DURATION
-  string timeDiffToPositionAheadQ1 = 6;
+  string timeDiffToPositionAheadQ1 = 4;
   //The time difference between this entry and the entry in position 1
   // (the quickest driver in the Q2 part of qualifying). Time format DURATION
-  string timeDiffToFastestQ2 = 7;
+  string timeDiffToFastestQ2 = 5;
   //The time difference between this entry and the entry in the position ahead during Q2 part of qualifying.
   //Time format DURATION
-  string timeDiffToPositionAheadQ2 = 8;
+  string timeDiffToPositionAheadQ2 = 6;
   //The time difference between this entry and the entry in position 1
   // (the quickest driver in the Q3 part of qualifying). Time format DURATION
-  string timeDiffToFastestQ3 = 9;
+  string timeDiffToFastestQ3 = 7;
   //The time difference between this entry and the entry in the position ahead during Q3 part of qualifying.
   //Time format DURATION
-  string timeDiffToPositionAheadQ3 = 10;
+  string timeDiffToPositionAheadQ3 = 8;
+  //Indicates if the entry has been knocked out during a qualifying part
+  bool knockOut = 9;
+  //Indicated if the entry has been cut off during a qualifying part
+  bool cutOff = 10;
 }
 
 //The PracticeDriverTimingEvent is sent during practice stages. The event is sent when the driver passes a timing loop.
