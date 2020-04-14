@@ -418,3 +418,16 @@ message SessionTimeEvent {
   //The local time of the day. Seconds and nanos since unix epoch UTC.
   google.protobuf.Timestamp localTimeOfDay = 2;
 }
+
+// Chequered flag in a stage. Other incident-related flags are in TrackStatusEvent.
+message ChequeredFlagEvent {
+}
+
+// Info about parts of a qualifying stage.
+message QualifyingPartEvent {
+  enum PreparedPart {
+    Q2 = 0;
+    Q3 = 1;
+  }
+  PreparedPart preparedPart = 1;
+}
