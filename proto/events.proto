@@ -431,3 +431,28 @@ message QualifyingPartEvent {
   }
   PreparedPart preparedPart = 1;
 }
+
+message DriverDRSStatus {
+  // The drivers sportradar id
+  string driverId = 1;
+  // Driver meets criteria for drs activation
+  bool drsActivationEnabled = 2;
+  // Driver is pressing drs activation button
+  bool drsButtonPressed = 3;
+  // Wing is active
+  bool wingActive = 4;
+  // drs is allowed in this state of the stage (disabled during safety car, in the first two laps, etc)
+  bool drsAllowed = 5;
+}
+
+message DRSEvent {
+  // partial or full update
+  bool isPartial = 1;
+  // List of one or more drivers
+  repeated DriverDRSStatus drivers = 2;
+}
+
+message FeedQualityEvent {
+  // Indicates whether or not we are receiving car data. If false we will not produce DRSEvents.
+  bool carDataReceived = 1;
+}
