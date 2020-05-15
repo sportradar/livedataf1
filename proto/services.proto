@@ -86,6 +86,8 @@ message StageSnapshotResponse {
     sportradar.ldi.f1.services.v1.BetStartEvent betStartEvent = 11;
     sportradar.ldi.f1.services.v1.BetStopEvent betStopEvent = 12;
   }
+  //Current feed quality
+  sportradar.ldi.f1.events.v1.FeedQualityEvent feedQualityEvent = 13;
 }
 
 // Requests events newer than the given afterSequenceId (e.g. not inclusive).
