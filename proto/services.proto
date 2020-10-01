@@ -5,6 +5,7 @@ package sportradar.ldi.f1.services.v1;
 import "events.proto";
 import "google/protobuf/duration.proto";
 import "event-wrapper.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_package = "com.sportradar.livedata.integration.f1.services.v1";
 option java_outer_classname = "ServiceProtos";
@@ -88,6 +89,8 @@ message StageSnapshotResponse {
   }
   //Current feed quality
   sportradar.ldi.f1.events.v1.FeedQualityEvent feedQualityEvent = 13;
+  //SessionTime
+  sportradar.ldi.f1.events.v1.SessionTimeEvent sessionTimeEvent = 14;
 }
 
 // Requests events newer than the given afterSequenceId (e.g. not inclusive).
@@ -103,6 +106,20 @@ message EventsRequest {
   int64 afterSequenceId = 3;
 }
 
+// Requests events newer than the given afterSequenceId (e.g. not inclusive) for the provided stageId.
+message CarPositionEventsRequest {
+  string stageId = 1;
+  // Specify the time delay between the response messages in milliseconds, e.g. if periodMs = 500,
+  // the resolution will be of 2 messages per second. Minimum period is 20 ms, and the response will use a period
+  // corrected to the next multiple of 20ms from the provided period
+  // (e.g. is periodMs = 50ms, the response will consist of messages every 60ms).
+  int32 periodMs = 2;
+  // The sequenceId for carPosition events is independent from the sequenceId of regular events, and the latest
+  // received carPosition sequenceId should be used here.
+  // Pass afterSequenceId 0 (default) to get all. -1 to only get new.
+  int64 afterSequenceId = 3;
+}
+
 // These events are mandatory and they will always stream regardless of the event types filter:
 // BetStartEvent, BetStopEvent, EarlyBetStartEvent, EndOfStageEvent, StartOfStageEvent
 message ReplayEventsRequest {
@@ -113,14 +130,70 @@ message ReplayEventsRequest {
   int32 speedFactor = 4; // Allowed values are 1-10. Unset, a default value of 0 will be interpreted as 1 -> play back at normal speed
 }
 
+message ReplayCarPositionEventsRequest {
+  string stageId = 1;
+  int64 afterSequenceId = 2;
+  int32 speedFactor = 3; // Allowed values are 1-10. Unset, a default value of 0 will be interpreted as 1 -> play back at normal speed
+  int32 periodMs = 4;
+}
+
+message StageTimelineEventsRequest {
+  string stageId = 1;
+  // Requested TimelineEvent types. Notice that only TimelineEvents are allowed, other events will be ignored.
+  repeated string eventTypes = 2;
+  google.protobuf.Timestamp from = 3;
+  google.protobuf.Timestamp to = 4;
+}
+
+message StageCarPositionEventsRequest {
+  string stageId = 1;
+  // from should come before to and the time range should be less than 60 sec.
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+  // Specify the time delay between the response messages in milliseconds, e.g. if periodMs = 500,
+  // the resolution will be of 2 messages per second. Minimum period is 20 ms, and the response will use a period
+  // corrected to the next multiple of 20ms from the provided period
+  // (e.g. is periodMs = 50ms, the response will consist of messages every 60ms).
+  int32 periodMs = 4;
+}
+
+message TrackModelRequest {
+  string stageId = 1;
+}
+
+message TrackModelResponse {
+  string url = 1;
+}
+
+message StageTimelineEventsResponse {
+  repeated sportradar.ldi.eventwrapper.v1.EventWrapper events = 1;
+}
+
+message StageCarPositionEventsResponse {
+  repeated sportradar.ldi.eventwrapper.v1.EventWrapper events = 1;
+}
+
 service EventStream {
   rpc StreamEvents (EventsRequest) returns (stream EventResponse);
   // Replays old events in the timing they where created - used for testing purposes only
   rpc ReplayStreamEvents (ReplayEventsRequest) returns (stream EventResponse);
+  rpc StreamCarPositionEvents (CarPositionEventsRequest) returns (stream EventResponse);
+  rpc ReplayStreamCarPositionEvents (ReplayCarPositionEventsRequest) returns (stream EventResponse);
 }
 
 service StageInfo {
   // The current state of the race. Leaderboard, track state, weather etc. Things that are built from a series of events.
   // If you reconnect during the race call this first to get current state, then update with stream events
   rpc GetStageSnapshot (StageSnapshotRequest) returns (StageSnapshotResponse);
+
+  // Return all Timeline events for the requested stage in the requested timeframe. Allowed Timeline events types are:
+  // StageStatusEvent, TrackStatusEvent, RaceControlEvent, LapCountEvent, FastestLapAchievedEvent,
+  // FastestSpeedAchievedEvent, PitLaneTimeEvent, FastestSectorTimeAchievedEvent, DriverOutEvent, DriverPitStopEvent,
+  // DriverStoppedEvent, Top3DriversEvent, OvertakeEvent, StartedRainingEvent
+  rpc GetStageTimelineEvents(StageTimelineEventsRequest) returns (StageTimelineEventsResponse);
+
+  // Return CarPosition events withing the given time rage with the given period between messages.
+  rpc GetStageCarPositionEvents(StageCarPositionEventsRequest) returns (StageCarPositionEventsResponse);
+
+  rpc GetTrackModelURLForStage(TrackModelRequest) returns (TrackModelResponse);
 }

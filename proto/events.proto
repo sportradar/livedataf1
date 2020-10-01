@@ -31,6 +31,29 @@ message DriverData {
   string tyre = 10;
   //True if the driver is active in the stage; not stopped, on track, not in the pit lane.
   bool isActive = 11;
+  //TimingData
+  oneof timingData {
+    RaceDriverTimingEvent raceDriverTimingEvent = 12;
+    QualifyingDriverTimingEvent qualifyingDriverTimingEvent = 13;
+    PracticeDriverTimingEvent practiceDriverTimingEvent = 14;
+  }
+  //DriverStatus
+  DriverStatus driverStatus = 15;
+  //Stint
+  Stint stint = 16;
+  //OvertakeState
+  OvertakingEvent.OvertakeState overtakeState = 17;
+  //CatchingState
+  CatchingEvent.CatchingState catchingState = 18;
+}
+
+// Denotes a position change for a driver. Note that the position is newUnofficialPosition,
+// meaning it has not been confirmed in TimingData.
+message DriverPosition {
+  //The SportRadar id for the driver
+  string driverId = 1;
+  //Position of the driver in the current classification
+  int32 newUnofficialPosition = 2;
 }
 
 //The LeaderboardItem is used as a data type in the 3 different types of leaderboard events
@@ -215,6 +238,7 @@ message NewTiresEvent {
   repeated Stint stints = 2;
 }
 
+// TimelineEvent, timeline events are available for fetching in the timeline service
 //The PitLaneTimeEvent is sent after the driver exits the pit lane. This time is the difference from the driver enters
 // the pit lane until the drivers exits the pit lane.
 message PitLaneTimeEvent {
@@ -222,10 +246,15 @@ message PitLaneTimeEvent {
   string driverId = 1;
   //The number of laps completed by the driver.
   int32 lapNumber = 2;
-  //The calculated delta from crossing the pit entry to crossing the pit exit. Duration in seconds, e.g. 21.8
+  //The calculated delta from crossing the pit entry to crossing the pit exit. Duration in seconds, e.g. 21.8
   double duration = 3;
+  // Number of pit stop this driver has taken including the current one
+  int32 pitStopCount = 4;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 5;
 }
 
+// TimelineEvent, timeline events are available for fetching in the timeline service.
 //The LapCountEvent contains information about the expected number of laps, the current lap and the laps remaining.
 //It is sent every time one of these values changes; Minimum every new lap. Not sent in Qualifying or Practice sessions.
 message LapCountEvent {
@@ -283,7 +312,7 @@ message CatchingEvent {
 message RaceDriverTimingEvent {
   //The drivers SportRadar id
   string driverId = 1;
-  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
   string intervalToPositionAhead = 2;
   //A duration to the leader. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
   string gapToLeader = 3;
@@ -331,7 +360,7 @@ message QualifyingDriverTimingEvent {
 message PracticeDriverTimingEvent {
   //The drivers SportRadar id
   string driverId = 1;
-  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
   string intervalToPositionAhead = 2;
   //A duration to the leader. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
   string gapToLeader = 3;
@@ -340,6 +369,7 @@ message PracticeDriverTimingEvent {
   string raceTime = 4;
 }
 
+// TimelineEvent, timeline events are available for fetching in the timeline service.
 //The StageStatusEvent is sent every time the stage status changes. Before the stage starts the status will be
 // INACTIVE and when it starts it will be STARTED. Normally the stage status does not change while a race is ongoing,
 // so you'll receive one StageStatusEvent when the race starts and one 2 hours later when the stage is FINISHED.
@@ -359,12 +389,15 @@ message StageStatusEvent {
   }
   //The current session state
   SessionState state = 1;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 2;
 }
 
-//The TrackStatusEvent is sent every time an incident occur that leads to a change in the status of the track. 
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+//The TrackStatusEvent is sent every time an incident occur that leads to a change in the status of the track.
 message TrackStatusEvent {
   enum TrackStatus {
-    UNKNOWN = 0; //The track status is unknown
+    UNKNOWN = 0; //The track status is unknown
     TRACK_CLEAR = 1; //Track is clear
     YELLOW_FLAGS = 2; //Yellow flags are being shown at one or more locations on track
     NO_USED_NO_MEANING = 3; //No longer used, no relevant meaning.
@@ -377,8 +410,11 @@ message TrackStatusEvent {
   TrackStatus trackStatus = 1;
   //String representation of the track status. E.g. "Yellow"
   string message = 2;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 3;
 }
 
+// TimelineEvent, timeline events are available for fetching in the timeline service.
 //RaceControlEvents are transmitted live at various times throughout the stage. It contains a description of relevant
 // events in the race such as information about incidents.
 message RaceControlEvent {
@@ -388,6 +424,8 @@ message RaceControlEvent {
   string tlaEnrichedValue = 2;
   //The message enriched with a drivers Name if a driver is mentioned in the message
   string nameEnrichedValue = 3;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 4;
 }
 
 //WeatherUpdateEvent describes the weather conditions at the track.
@@ -405,7 +443,7 @@ message WeatherUpdateEvent {
   //The current wind course, in degrees, measured in a clockwise direction with 0 representing north.
   //Wind course indicates where the wind is blowing to.
   int32 windDirection = 6;
-  //The current wind speed, measured in meters per second.
+  //The current wind speed, measured in meters per second.
   double windSpeed = 7;
 }
 
@@ -456,3 +494,126 @@ message FeedQualityEvent {
   // Indicates whether or not we are receiving car data. If false we will not produce DRSEvents.
   bool carDataReceived = 1;
 }
+
+// TimelineEvent, timeline events are available for fetching in the timeline service
+message FastestLapAchievedEvent {
+  // The drivers sportradar id
+  string driverId = 1;
+  // Fastest time
+  string fastestLapTime = 2;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 3;
+}
+
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+// Fastest speed achieve per speed trap.
+message FastestSpeedAchievedEvent {
+  // The drivers sportradar id
+  string driverId = 1;
+  //The speed trap id, alphanumeric
+  //
+  //I1 - Intermediate 1
+  //I2 - Intermediate 2
+  //FL - Finish line
+  //ST - Speed trap (standalone)
+  string id = 2;
+  // Fastest speed in km/h for this speed trap.
+  string value = 3;
+  // True if this speed was the fastest over all speed traps
+  bool overallFastest = 4;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 5;
+}
+
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+// Fastest sector time achieved per sector.
+message FastestSectorTimeAchievedEvent {
+  // The drivers sportradar id
+  string driverId = 1;
+  //The sector id, numeric value from 1 to 3
+  int32 id = 2;
+  // Fastest time for this sector. Time format DURATION. Empty if the sector has not been completed for the current lap.
+  string value = 3;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 4;
+}
+
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+// Triggered when DriverStatus.retired changes to true
+message DriverOutEvent {
+  // The drivers sportradar id
+  string driverId = 1;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 2;
+}
+
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+// Triggered when DriverStatus.stopped changes to true
+message DriverStoppedEvent {
+  // The drivers sportradar id
+  string driverId = 1;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 2;
+}
+
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+// Triggered when DriverStatus.inPit changes to true
+message DriverPitStopEvent {
+  // The drivers sportradar id
+  string driverId = 1;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 2;
+}
+
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+// Triggered in race when top3 driver gets to lapsCompleted=totalRaceLaps
+message Top3DriversEvent {
+  // The drivers sportradar id
+  string driverId = 1;
+  // Driver position (1 to 3)
+  int32 position = 2;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 3;
+}
+
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+// Triggered by OvertakingEvent with OvertakeState:Overtaken/Overtook
+message OvertakeEvent {
+  // Driver that perform the overtake
+  DriverPosition fasterDriver = 1;
+  // Overtaken drivers
+  repeated DriverPosition overtakenDrivers = 2;
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 3;
+}
+
+// TimelineEvent, timeline events are available for fetching in the timeline service.
+// Triggered when WeatherUpdateEvent.rainfall changes to true.
+message StartedRainingEvent {
+  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  int32 currentRaceLapOrSession = 1;
+}
+
+// Position data for a single driver
+message DriverCarPosition {
+  // The drivers sportradar id
+  string driverId = 1;
+  // posX, posY, and posZ are coordinates defines by the track model
+  int32 posX = 2;
+  int32 posY = 3;
+  int32 posZ = 4;
+  int32 speed = 5;
+  int32 direction = 6;
+  int32 attitudeYaw = 7;
+  int32 attitudePitch = 8;
+  int32 attitudeRoll = 9;
+  int32 progression = 10;
+}
+
+// Only available through dedicated services (StageInfo.GetStageCarPositionEvents and
+// EventStream.StreamCarPositionEvents). positions will always contain the DriverCarPosition for each one of the 20
+// drivers.
+message CarPositionEvent {
+  repeated DriverCarPosition positions = 1;
+}
+
