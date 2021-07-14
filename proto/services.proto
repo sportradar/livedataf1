@@ -68,6 +68,7 @@ message StageSnapshotResponse {
     sportradar.ldi.f1.events.v1.RaceLeaderboardEvent raceLeaderboardEvent = 1;
     sportradar.ldi.f1.events.v1.QualifyingLeaderboardEvent qualifyingLeaderboardEvent = 2;
     sportradar.ldi.f1.events.v1.PracticeLeaderboardEvent practiceLeaderboardEvent = 3;
+    sportradar.ldi.f1.events.v1.SprintQualifyingLeaderboardEvent sprintQualifyingLeaderboardEvent = 16;
   }
   //The most recent status of the stage.
   sportradar.ldi.f1.events.v1.StageStatusEvent stageStatusEvent = 4;

@@ -36,6 +36,7 @@ message DriverData {
     RaceDriverTimingEvent raceDriverTimingEvent = 12;
     QualifyingDriverTimingEvent qualifyingDriverTimingEvent = 13;
     PracticeDriverTimingEvent practiceDriverTimingEvent = 14;
+    SprintQualifyingDriverTimingEvent sprintQualifyingDriverTimingEvent = 19;
   }
   //DriverStatus
   DriverStatus driverStatus = 15;
@@ -77,6 +78,20 @@ message StartingPositionEvent {
 //The RaceLeaderboardEvent is sent during race stages. Full updates for RaceLeaderboardEvent
 // is sent approximately every 20 seconds. Partial updates is sent every time a driver completes a sector.
 message RaceLeaderboardEvent {
+  //The id of the stage
+  string stageId = 1;
+  //False if it contains all drivers and True if it contains fewer than all drivers
+  bool isPartialUpdate = 2;
+  //The ideal lap time for the current session. The ideal lap time is the sum of the
+  //best sector times for the current session.
+  string idealLapTime = 3;
+  //A list of leaderboard items
+  repeated LeaderboardItem items = 4;
+}
+
+//The SprintQualifyingLeaderboardEvent is sent during sprint qualifying stages. Full updates for SprintQualifyingLeaderboardEvent
+// is sent approximately every 20 seconds. Partial updates is sent every time a driver completes a sector.
+message SprintQualifyingLeaderboardEvent {
   //The id of the stage
   string stageId = 1;
   //False if it contains all drivers and True if it contains fewer than all drivers
@@ -250,7 +265,7 @@ message PitLaneTimeEvent {
   double duration = 3;
   // Number of pit stop this driver has taken including the current one
   int32 pitStopCount = 4;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 5;
 }
 
@@ -310,6 +325,21 @@ message CatchingEvent {
 
 //The RaceDriverTimingEvent is sent during race stages. This event is sent every time a driver passes a new timing loop.
 message RaceDriverTimingEvent {
+  //The drivers SportRadar id
+  string driverId = 1;
+  //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  string intervalToPositionAhead = 2;
+  //A duration to the leader. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
+  string gapToLeader = 3;
+  //The duration of time between the race start time, and the last passing of the control line for this entry.
+  // H:MM:SS:THT (e.g. "1:02:03:045"), no 0 in the left are displayed.
+  string raceTime = 4;
+  //The new UNOFFICIAL position for the driver. This position is not verified and should only be used as a guideline.
+  int32 newUnofficialPosition = 5;
+}
+
+//The SprintQualifyingDriverTimingEvent is sent during sprint qualifying stages. This event is sent every time a driver passes a new timing loop.
+message SprintQualifyingDriverTimingEvent {
   //The drivers SportRadar id
   string driverId = 1;
   //A duration to the position ahead. Shown as "<n> LAP" if the driver is more than one lap behind. Time format DURATION
@@ -389,7 +419,7 @@ message StageStatusEvent {
   }
   //The current session state
   SessionState state = 1;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 2;
 }
 
@@ -410,7 +440,7 @@ message TrackStatusEvent {
   TrackStatus trackStatus = 1;
   //String representation of the track status. E.g. "Yellow"
   string message = 2;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 3;
 }
 
@@ -424,7 +454,7 @@ message RaceControlEvent {
   string tlaEnrichedValue = 2;
   //The message enriched with a drivers Name if a driver is mentioned in the message
   string nameEnrichedValue = 3;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 4;
 }
 
@@ -501,7 +531,7 @@ message FastestLapAchievedEvent {
   string driverId = 1;
   // Fastest time
   string fastestLapTime = 2;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 3;
 }
 
@@ -521,7 +551,7 @@ message FastestSpeedAchievedEvent {
   string value = 3;
   // True if this speed was the fastest over all speed traps
   bool overallFastest = 4;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 5;
 }
 
@@ -534,7 +564,7 @@ message FastestSectorTimeAchievedEvent {
   int32 id = 2;
   // Fastest time for this sector. Time format DURATION. Empty if the sector has not been completed for the current lap.
   string value = 3;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 4;
 }
 
@@ -543,7 +573,7 @@ message FastestSectorTimeAchievedEvent {
 message DriverOutEvent {
   // The drivers sportradar id
   string driverId = 1;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 2;
 }
 
@@ -552,7 +582,7 @@ message DriverOutEvent {
 message DriverStoppedEvent {
   // The drivers sportradar id
   string driverId = 1;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 2;
 }
 
@@ -561,7 +591,7 @@ message DriverStoppedEvent {
 message DriverPitStopEvent {
   // The drivers sportradar id
   string driverId = 1;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 2;
 }
 
@@ -572,7 +602,7 @@ message Top3DriversEvent {
   string driverId = 1;
   // Driver position (1 to 3)
   int32 position = 2;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 3;
 }
 
@@ -583,14 +613,14 @@ message OvertakeEvent {
   DriverPosition fasterDriver = 1;
   // Overtaken drivers
   repeated DriverPosition overtakenDrivers = 2;
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 3;
 }
 
 // TimelineEvent, timeline events are available for fetching in the timeline service.
 // Triggered when WeatherUpdateEvent.rainfall changes to true.
 message StartedRainingEvent {
-  // Current race lap during race, qualifying part during qualifying, 0 during practice
+  // Current race lap during race, sprint qualifying, qualifying part during qualifying, 0 during practice
   int32 currentRaceLapOrSession = 1;
 }
 
