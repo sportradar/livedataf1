@@ -92,6 +92,9 @@ message StageSnapshotResponse {
   sportradar.ldi.f1.events.v1.FeedQualityEvent feedQualityEvent = 13;
   //SessionTime
   sportradar.ldi.f1.events.v1.SessionTimeEvent sessionTimeEvent = 14;
+  repeated google.protobuf.Timestamp earlyBetStartTimestamps = 17;
+  repeated google.protobuf.Timestamp betStartTimestamps = 18;
+  repeated google.protobuf.Timestamp betStopTimestamps = 19;
 }
 
 // Requests events newer than the given afterSequenceId (e.g. not inclusive).
