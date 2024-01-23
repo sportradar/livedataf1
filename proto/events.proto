@@ -336,6 +336,8 @@ message RaceDriverTimingEvent {
   string raceTime = 4;
   //The new UNOFFICIAL position for the driver. This position is not verified and should only be used as a guideline.
   int32 newUnofficialPosition = 5;
+  // Number of laps which driver was leading the stage
+  int32 totalLapsLed = 6;
 }
 
 //The SprintQualifyingDriverTimingEvent is sent during sprint qualifying stages. This event is sent every time a driver passes a new timing loop.
@@ -351,6 +353,8 @@ message SprintQualifyingDriverTimingEvent {
   string raceTime = 4;
   //The new UNOFFICIAL position for the driver. This position is not verified and should only be used as a guideline.
   int32 newUnofficialPosition = 5;
+  // Number of laps which driver was leading the stage
+  int32 totalLapsLed = 6;
 }
 
 //The QualifyingDriverTimingEvent is sent during qualifying stages. It contains timing data from qualifying sessions
